@@ -426,7 +426,7 @@
 #include <sys/select.h>
 
 #define UART_PORT "/dev/ttyS1"      // UART1 sur Beaglebone Blue
-#define CAN_INTERFACE "vcan0"       // Interface CAN (changez en "can0" si vous utilisez une interface réelle)
+#define CAN_INTERFACE "can0"       // Interface CAN (changez en "can0" si vous utilisez une interface réelle)
 #define MAX_DATA_SIZE 256           // Taille maximale des données
 #define UART_BUFFER_SIZE 1024  
 
@@ -435,23 +435,23 @@
 typedef enum
 {
     Commandant = 0x120,
-        com_mode = Commandant + 1,
-        com_alarm = Commandant + 2,
-        com_conversion = Commandant + 3,
+        com_mode,
+        com_alarm,
+        com_conversion,
 
     
     Station_Pese = 0x140,
-        bal_mode = Station_Pese + 1,
-        bal_poids = Station_Pese + 2,
-        bal_conversion = Station_Pese + 3,
+        bal_mode,
+        bal_poids,
+        bal_conversion,
     
     Centre_tri = 0x150,
-        ct_couleur = Centre_tri + 1,
-        ct_mode = Centre_tri + 2,
+        ct_couleur,
+        ct_mode,
     
     Gestion_transport = 0x160,
-        gt_position = Gestion_transport + 1,
-        gt_statut = Gestion_transport + 2,
+        gt_position,
+        gt_statut,
 } CAN_ID;
 
 volatile sig_atomic_t keep_running = 1;
@@ -598,17 +598,44 @@ void handle_uart_to_can(int uart_fd, int can_socket)
 
 void handle_can_to_uart(int can_socket, int uart_fd) 
 {
+    const char *mode;
     struct can_frame frame;
+
     if (read(can_socket, &frame, sizeof(frame)) > 0) 
     {
         char uart_msg[256];
 
+        // printf("ID CAN : 0x%X, DLC : %d, Données : ", frame.can_id, frame.can_dlc);
+        // for (int i = 0; i < frame.can_dlc; i++) 
+        // {
+        //     printf("%02X ", frame.data[i]);
+        // }
+        // printf("\n");
+
         switch (frame.can_id) 
         {     
-            case ct_mode:
-                snprintf(uart_msg, sizeof(uart_msg), "Mode:%s\n", frame.data[0] == 1 ? "Test" : frame.data[0] == 2 ? "Erreur" : "Attente");
-                write(uart_fd, uart_msg, strlen(uart_msg));
+
+          case ct_mode:
+          {
+            if (strcmp((char *)frame.data, "Test") == 0) 
+            {
+                mode = "Test";
+                printf("Mode Test");
+                printf("\n");
+            } 
+            else if (strcmp((char *)frame.data, "Erreur") == 0) 
+            {
+                mode = "Erreur";
+            } 
+            else if (strcmp((char *)frame.data, "Attente") == 0) 
+            {
+                mode = "Attente";
+            } 
+        
+            snprintf(uart_msg, sizeof(uart_msg), "Mode:%s\n", mode);
+            write(uart_fd, uart_msg, strlen(uart_msg));
             break;
+          }
             case ct_couleur:
                 snprintf(uart_msg, sizeof(uart_msg), "$Couleur,%c\n", frame.data[0]);
                 write(uart_fd, uart_msg, strlen(uart_msg));
