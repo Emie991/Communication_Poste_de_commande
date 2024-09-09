@@ -554,8 +554,7 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         uart_buffer[bytes_read] = '\0';
         printf("Reçu via UART : %s\n", uart_buffer);
 
-
-        if (strstr(uart_buffer, "Alarme\n")) 
+        if (strstr(uart_buffer, "$Alarme\n")) 
         {
             struct can_frame alarm_frame = { .can_id = com_alarm, .can_dlc = 1, .data = {1} };
             write(can_socket, &alarm_frame, sizeof(alarm_frame));
@@ -563,23 +562,15 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         } 
         else if (strstr(uart_buffer, "$Start\n")) 
         {
-            if (current_mode != 1) // Si le mode actuel n'est pas déjà "Opération"
-            {
-              current_mode = 1;
               struct can_frame mode_frame = { .can_id = com_mode, .can_dlc = 1, .data = {1} };
               write(can_socket, &mode_frame, sizeof(mode_frame));
               printf("Mode opération envoyé sur le CAN\n");
-            }
         } 
         else if (strstr(uart_buffer, "$Arret\n")) 
         {
-            if (current_mode != 0) // Si le mode actuel n'est pas déjà "Arrêt"
-            {
-             current_mode = 0;
              struct can_frame mode_frame = { .can_id = com_mode, .can_dlc = 1, .data = {0} };
              write(can_socket, &mode_frame, sizeof(mode_frame));
              printf("Mode arrêt envoyé sur le CAN\n");
-            }
         }
         else if (strstr(uart_buffer, "$Grammes\n")) 
         {
@@ -626,12 +617,27 @@ void handle_can_to_uart(int can_socket, int uart_fd)
             else if (strcmp((char *)frame.data, "Erreur") == 0) 
             {
                 mode = "Erreur";
+                printf("Mode Erreur");
+                printf("\n");
             } 
             else if (strcmp((char *)frame.data, "Attente") == 0) 
             {
                 mode = "Attente";
+                printf("Mode Attente");
+                printf("\n");
             } 
-        
+            else if (strcmp((char *)frame.data, "Operation") == 0) 
+            {
+                mode = "Operation";
+                printf("Mode Operation");
+                printf("\n");
+            } 
+            else if (strcmp((char *)frame.data, "Arret") == 0) 
+            {
+                mode = "Arret";
+                printf("Mode Arret");
+                printf("\n");
+            } 
             snprintf(uart_msg, sizeof(uart_msg), "Mode:%s\n", mode);
             write(uart_fd, uart_msg, strlen(uart_msg));
             break;
