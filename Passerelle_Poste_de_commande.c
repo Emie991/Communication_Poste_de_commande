@@ -542,8 +542,6 @@ int open_can_socket(const char *can_interface)
     return s;
 }
 
-int current_mode = -1; // -1: Aucun, 0: Arrêt, 1: Opération
-
 void handle_uart_to_can(int uart_fd, int can_socket) 
 {
     char uart_buffer[UART_BUFFER_SIZE];
@@ -644,6 +642,7 @@ void handle_can_to_uart(int can_socket, int uart_fd)
           }
             case ct_couleur:
                 snprintf(uart_msg, sizeof(uart_msg), "$Couleur,%c\n", frame.data[0]);
+                printf("Caractère: %c\n", frame.data[0]);         // Affiche la conversion en caractère
                 write(uart_fd, uart_msg, strlen(uart_msg));
                 break;
             case bal_poids:
