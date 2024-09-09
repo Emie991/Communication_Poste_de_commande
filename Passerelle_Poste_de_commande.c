@@ -625,7 +625,7 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         else if (strstr(uart_buffer, "$Grammes\n")) 
         { 
               // Préparer une trame CAN pour demander une conversion en grammes
-              struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {1} };
+              struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {0} };
               write(can_socket, &conversion_frame, sizeof(conversion_frame));
               printf("Demande de conversion en grammes envoyé sur le CAN\n");
         } 
