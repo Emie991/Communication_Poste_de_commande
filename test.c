@@ -1,84 +1,262 @@
+// #include <stdio.h>
+// #include <string.h>
+// #include <unistd.h>
+// #include <fcntl.h>
+// #include <termios.h>
+// #include <errno.h>
+
+// #define UART_PORT "/dev/ttyS1"  // UART1 sur Beaglebone Blue
+// #define MAX_DATA_SIZE 8        // Taille maximale des données reçues
+
+
+// // Fonction pour configurer le port série
+// int configure_uart(int fd) 
+// {
+//     struct termios options;
+//     if (tcgetattr(fd, &options) < 0) {
+//         perror("tcgetattr");
+//         return -1;
+//     }
+    
+//     // Configurer la vitesse de transmission (9600 bauds, 8 bits, sans parité, 1 bit d'arrêt)
+//     cfsetispeed(&options, B115200);
+//     cfsetospeed(&options, B115200);
+
+//     // Désactivation du contrôle de flux, pas de parité, 8 bits de données, 1 bit d'arrêt
+//     options.c_cflag &= ~PARENB;    // Pas de parité
+//     options.c_cflag &= ~CSTOPB;    // 1 bit d'arrêt
+//     options.c_cflag &= ~CSIZE;     // Masquer la taille des données
+//     options.c_cflag |= CS8;        // 8 bits de données
+//     // options.c_cflag &= ~CRTSCTS;   // Pas de contrôle de flux matériel
+
+//     // Activer les options de lecture et de réception
+//     options.c_cflag |= CREAD | CLOCAL;
+
+//     // Appliquer les modifications
+//     if (tcsetattr(fd, TCSANOW, &options) < 0) {
+//         perror("tcsetattr");
+//         return -1;
+//     }
+
+//     // Vider les tampons d'entrée et de sortie
+//     tcflush(fd, TCIOFLUSH);
+
+//     return 0;
+// }
+
+// // Fonction pour lire les données de l'UART
+// int read_uart(int fd, char *buffer, size_t size)
+// {
+//     int n = read(fd, buffer, size);
+//     if (n < 0) {
+//         perror("read");
+//         return -1;
+//     }
+//     return n;
+// }
+
+// // Fonction pour envoyer des données via UART
+// int write_uart(int fd, const char *data)
+// {
+//     int n = write(fd, data, strlen(data));
+//     if (n < 0) {
+//         perror("write");
+//         return -1;
+//     }
+//     return n;
+// }
+
+// int main()
+// {
+//     int fd = open(UART_PORT, O_RDWR | O_NOCTTY | O_SYNC);
+//     if (fd < 0) {
+//         perror("open");
+//         return -1;
+//     }
+
+//     // Configurer le port série
+//     if (configure_uart(fd) < 0) {
+//         close(fd);
+//         return -1;
+//     }
+
+//     // Données à envoyer
+//     const char *data_to_send = "$N,25.50,1,Arret";
+//     if (write_uart(fd, data_to_send) < 0) 
+//     {
+//         close(fd);
+//         return -1;
+//     }
+//     printf("Données envoyées: %s\n", data_to_send);
+
+//     char received_data[MAX_DATA_SIZE];
+
+//     // Boucle infinie pour lire les données entrantes
+//     while (1) 
+//     {
+//         int bytes_received = read_uart(fd, received_data, MAX_DATA_SIZE);
+
+//         if (bytes_received > 0) 
+//         {
+//             printf("Données reçues: %s\n", received_data);
+//         }
+//         else if (bytes_received == 0)
+//         {
+//             printf("Aucune donnée reçue pour le moment\n"); 
+//         }
+//         else 
+//         {
+//             printf("Erreur lors de la lecture des données\n"); 
+//         }
+//         // Ajouter un délai pour éviter de surcharger le CPU
+//         usleep(100000); // 100 ms
+//     }
+
+//     // Fermer le port série
+//     close(fd);
+
+//     return 0;
+// }
+
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <termios.h>
 #include <errno.h>
+#include <sys/wait.h>
+#include <signal.h>
 
-#define UART_PORT "/dev/ttyO1"  // UART1 sur Beaglebone Blue
-#define MAX_DATA_SIZE 8        // Taille maximale des données reçues
+#define UART_PORT "/dev/ttyS1"  // UART1 sur Beaglebone Blue
+#define MAX_DATA_SIZE 8         // Taille maximale des données reçues
+
+volatile sig_atomic_t keep_running = 1;
+
+void sigint_handler(int sig)
+{
+    keep_running = 0;
+}
 
 // Fonction pour configurer le port série
-int configure_uart(int fd) {
+int configure_uart(int fd) 
+{
     struct termios options;
-    tcgetattr(fd, &options);
-    cfsetispeed(&options, B9600); // Vitesse de 9600 bauds
-    cfsetospeed(&options, B9600); // Vitesse de 9600 bauds
+    if (tcgetattr(fd, &options) < 0) {
+        perror("tcgetattr");
+        return -1;
+    }
+    
+    // Configurer la vitesse de transmission (115200 bauds, 8 bits, sans parité, 1 bit d'arrêt)
+    cfsetispeed(&options, B115200);
+    cfsetospeed(&options, B115200);
 
-    options.c_cflag &= ~PARENB;   // Pas de parité
-    options.c_cflag &= ~CSTOPB;   // 1 bit de stop
-    options.c_cflag &= ~CSIZE;    // Clear current char size mask
-    options.c_cflag |= CS8;       // 8 bits de données
+    // Désactivation du contrôle de flux, pas de parité, 8 bits de données, 1 bit d'arrêt
+    options.c_cflag &= ~PARENB;    // Pas de parité
+    options.c_cflag &= ~CSTOPB;    // 1 bit d'arrêt
+    options.c_cflag &= ~CSIZE;     // Masquer la taille des données
+    options.c_cflag |= CS8;        // 8 bits de données
 
-    options.c_iflag &= ~(IXON | IXOFF | IXANY); // Pas de contrôle de flux logiciel
-    options.c_iflag &= ~(ICANON | ECHO | ECHOE | ISIG); // Mode brut
-    options.c_oflag &= ~OPOST;    // Mode brut
+    // Activer les options de lecture et de réception
+    options.c_cflag |= CREAD | CLOCAL;
 
-    tcsetattr(fd, TCSANOW, &options); // Appliquer les paramètres
+    // Appliquer les modifications
+    if (tcsetattr(fd, TCSANOW, &options) < 0) {
+        perror("tcsetattr");
+        return -1;
+    }
+
+    // Vider les tampons d'entrée et de sortie
+    tcflush(fd, TCIOFLUSH);
+
     return 0;
 }
 
-// Fonction pour recevoir une trame UART
-int receive_uart_data(int fd, char *data) {
-    int n = read(fd, data, MAX_DATA_SIZE); // Lire jusqu'à 8 octets
+// Fonction pour lire les données de l'UART
+int read_uart(int fd, char *buffer, size_t size)
+{
+    int n = read(fd, buffer, size);
     if (n < 0) {
-        perror("Erreur de lecture UART");
+        perror("read");
         return -1;
     }
-    return n; // Retourne le nombre d'octets lus
+    buffer[n] = '\0'; // Terminer la chaîne avec un caractère nul
+    return n;
 }
 
-// Fonction pour envoyer une réponse via UART
-void send_uart_data(int fd, const char *data) {
-    int len = strlen(data);
-    int n = write(fd, data, len); // Envoie la trame
+// Fonction pour envoyer des données via UART
+int write_uart(int fd, const char *data)
+{
+    int n = write(fd, data, strlen(data));
     if (n < 0) {
-        perror("Erreur d'écriture UART");
+        perror("write");
+        return -1;
     }
+    return n;
 }
 
-int main() {
-    int uart_fd;
-    char received_data[MAX_DATA_SIZE];
-    
-    // Ouvrir le port UART1
-    uart_fd = open(UART_PORT, O_RDWR | O_NOCTTY | O_SYNC);
-    if (uart_fd == -1) {
-        perror("Erreur lors de l'ouverture du port série");
-        return 1;
+int main()
+{
+    // Gestion du signal Ctrl+C pour une sortie propre
+    signal(SIGINT, sigint_handler);
+
+    int fd = open(UART_PORT, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0) {
+        perror("open");
+        return -1;
     }
 
-    // Configurer le port UART
-    configure_uart(uart_fd);
+    // Configurer le port série
+    if (configure_uart(fd) < 0) {
+        close(fd);
+        return -1;
+    }
 
-    while (1) {
-        memset(received_data, 0, MAX_DATA_SIZE); // Réinitialiser le buffer
-        int bytes_received = receive_uart_data(uart_fd, received_data);
+    pid_t pid = fork();
 
-        if (bytes_received > 0) {
-            printf("Données reçues : %s\n", received_data);
-
-            // Exemple de réponse basée sur la donnée reçue
-            if (strcmp(received_data, "START") == 0) {
-                send_uart_data(uart_fd, "Système démarré");
-            } else if (strcmp(received_data, "STOP") == 0) {
-                send_uart_data(uart_fd, "Système arrêté");
-            } else {
-                send_uart_data(uart_fd, "Commande non reconnue");
+    if (pid < 0) {
+        // Erreur lors du fork
+        perror("fork");
+        close(fd);
+        return -1;
+    }
+    else if (pid > 0) {
+        // Processus parent: envoi des données
+        while (keep_running) {
+            const char *data_to_send = "$N,25.50,1,Arret";
+            if (write_uart(fd, data_to_send) < 0) {
+                break;
             }
+            printf("Données envoyées: %s\n", data_to_send);
+            sleep(1); // Envoyer les données toutes les secondes
         }
+        // Attendre que le processus enfant se termine
+        wait(NULL);
+        close(fd);
+        printf("Processus parent terminé.\n");
+    }
+    else {
+        // Processus enfant: lecture des données
+        char received_data[MAX_DATA_SIZE + 1]; // +1 pour le caractère nul
+
+        while (keep_running) {
+            int bytes_received = read_uart(fd, received_data, MAX_DATA_SIZE);
+
+            if (bytes_received > 0) {
+                printf("Données reçues: %s\n", received_data);
+            }
+            else if (bytes_received == 0) {
+                // Aucune donnée reçue pour le moment
+            }
+            else {
+                printf("Erreur lors de la lecture des données\n");
+            }
+            // Ajouter un délai pour éviter de surcharger le CPU
+            usleep(100000); // 100 ms
+        }
+        close(fd);
+        printf("Processus enfant terminé.\n");
     }
 
-    close(uart_fd); // Fermer le port UART
     return 0;
 }
