@@ -608,16 +608,16 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         if (strstr(uart_buffer, "$Alarme\n")) 
         {
              frame.can_id = com_alarm;
-             frame.can_dlc = strlen("$Alarme\n");
-             strncpy((char *)frame.data, "$Alarme\n", frame.can_dlc);
+             frame.can_dlc = strlen("Alarme");
+             strncpy((char *)frame.data, "Alarme", frame.can_dlc);
              write(can_socket, &frame, sizeof(frame));
              printf("Message d'alarme envoyé sur le CAN\n");
         } 
         else if (strstr(uart_buffer, "$Start\n")) 
         {
              frame.can_id = com_mode;
-             frame.can_dlc = strlen("$Start\n");
-             strncpy((char *)frame.data, "$Start\n", frame.can_dlc);
+             frame.can_dlc = strlen("Start");
+             strncpy((char *)frame.data, "Start", frame.can_dlc);
              write(can_socket, &frame, sizeof(frame));
               printf("Mode opération envoyé sur le CAN\n");
         } 
@@ -625,16 +625,16 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         {
             
              frame.can_id = com_mode;
-             frame.can_dlc = strlen("$Arret\n");
-             strncpy((char *)frame.data, "$Arret\n", frame.can_dlc);
+             frame.can_dlc = strlen("Arret");
+             strncpy((char *)frame.data, "Arret", frame.can_dlc);
              write(can_socket, &frame, sizeof(frame));
              printf("Mode arrêt envoyé sur le CAN\n");
         }
         else if (strstr(uart_buffer, "$Grammes\n")) 
         { 
              frame.can_id = com_conversion;
-             frame.can_dlc = strlen("$Grammes\n");
-             strncpy((char *)frame.data, "$Grammes\n", frame.can_dlc);
+             frame.can_dlc = strlen("Grammes");
+             strncpy((char *)frame.data, "Grammes", frame.can_dlc);
              write(can_socket, &frame, sizeof(frame));
              printf("Demande de conversion en grammes envoyé sur le CAN\n");
         } 
@@ -642,8 +642,8 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         {
              // Préparer une trame CAN pour demander une conversion en onces
              frame.can_id = com_conversion;
-             frame.can_dlc = strlen("$Onces\n");
-             strncpy((char *)frame.data, "$Onces\n", frame.can_dlc);
+             frame.can_dlc = strlen("Onces");
+             strncpy((char *)frame.data, "Onces", frame.can_dlc);
              write(can_socket, &frame, sizeof(frame));
              printf("Demande de conversion en onces envoyé sur le CAN\n");
         } 
