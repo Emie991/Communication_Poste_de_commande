@@ -595,7 +595,7 @@ void handle_uart_to_can(int uart_fd, int can_socket)
 {
     char uart_buffer[UART_BUFFER_SIZE];
     struct can_frame frame = {0}; // Initialiser la trame CAN
-    
+
     // Lire les données du port UART
     int bytes_read = read(uart_fd, uart_buffer, sizeof(uart_buffer) - 1);
 
@@ -702,7 +702,7 @@ void handle_can_to_uart(int can_socket, int uart_fd)
                 mode = "Operation";
                 printf("Mode Operation");
                 printf("\n");
-            } 
+            }  
             else if (strcmp((char *)frame.data, "Arret") == 0) 
             {
                 mode = "Arret";
