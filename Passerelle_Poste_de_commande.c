@@ -425,13 +425,13 @@
 #include <linux/can/raw.h>
 #include <sys/select.h>
 
-#define UART_PORT "/dev/ttyS1"      // UART1 sur Beaglebone Blue
-#define CAN_INTERFACE "can0"       // Interface CAN (changez en "can0" si vous utilisez une interface réelle)
-#define MAX_DATA_SIZE 256           // Taille maximale des données
-#define UART_BUFFER_SIZE 1024  
+#define UART_PORT "/dev/ttyS1"     // UART1 sur Beaglebone Blue
+#define CAN_INTERFACE "can0"       // Interface CAN
+#define MAX_DATA_SIZE 256          // Taille maximale des données CAN
+#define UART_BUFFER_SIZE 1024      // Taille maximale du tampon UART
 
 
-
+// Définition des IDs CAN utilisés pour identifier les messages
 typedef enum
 {
     Commandant = 0x120,
@@ -454,17 +454,34 @@ typedef enum
         gt_statut,
 } CAN_ID;
 
+
 volatile sig_atomic_t keep_running = 1;
 
+
+// *************************************************************************************************
+//  Auteur                     : Émie-Jeanne Dupuis
+//  Description                : Gère le signal SIGINT pour permettre une terminaison propre du programme.
+//  Paramètres d'entrées       : sig - le signal reçu
+//  Paramètres de sortie       : Aucun
+//  Notes                      : Met à jour la variable globale `keep_running`.
+// *************************************************************************************************
 void sigint_handler(int sig)
 {
     keep_running = 0;
 }
 
-// Fonction pour configurer le port série
+// *************************************************************************************************
+//  Auteur                     : Émie-Jeanne Dupuis
+//  Description                : Configure le port UART pour une communication série.
+//  Paramètres d'entrées       : fd - descripteur de fichier du port série
+//  Paramètres de sortie       : 0 en cas de succès, -1 en cas d'erreur
+//  Notes                      : Configure la vitesse, la parité, et d'autres paramètres série.
+// *************************************************************************************************
 int configure_uart(int fd)
 {
     struct termios options;
+
+    // Récupère les paramètres actuels du port série
     if (tcgetattr(fd, &options) < 0)
     {
         perror("tcgetattr");
@@ -488,10 +505,10 @@ int configure_uart(int fd)
 
     options.c_oflag &= ~OPOST; // Pas de traitement de sortie
 
-    options.c_cc[VMIN] = 1;
-    options.c_cc[VTIME] = 0; // Timeout en dixièmes de seconde (ici, 1 seconde)
+    options.c_cc[VMIN] = 1;  // Lire au moins 1 caractère
+    options.c_cc[VTIME] = 0; // Pas de timeout
 
-    // Appliquer les modifications
+    // Applique les nouveaux paramètres
     if (tcsetattr(fd, TCSANOW, &options) < 0)
     {
         perror("tcsetattr");
@@ -505,23 +522,33 @@ int configure_uart(int fd)
 }
 
 
-// Fonction pour ouvrir le socket CAN
+// *************************************************************************************************
+//  Auteur                     : Émie-Jeanne Dupuis
+//  Description                : Ouvre et configure un socket pour l'interface CAN.
+//  Paramètres d'entrées       : can_interface - nom de l'interface CAN (ex. "can0")
+//  Paramètres de sortie       : Descripteur de socket en cas de succès, -1 en cas d'erreur
+//  Notes                      : Lier le socket au nom d'interface CAN spécifié.
+// *************************************************************************************************
 int open_can_socket(const char *can_interface)
 {
+    // Descripteur de socket
     int s;
+    // Structure pour configurer l'interface réseau
     struct ifreq ifr;
+    // Structure pour lier l'adresse CAN
     struct sockaddr_can addr;
 
-    // Ouvrir le socket
+    // Ouvrir un socket CAN pour communiquer avec l'interface CAN
     s = socket(PF_CAN, SOCK_RAW, CAN_RAW);
     if (s < 0)
     {
         perror("socket");
         return -1;
     }
-
-    // Spécifier l'interface CAN
+    
+    // Configure le nom de l'interface CAN à utiliser
     strcpy(ifr.ifr_name, can_interface);
+
     if (ioctl(s, SIOCGIFINDEX, &ifr) < 0)
     {
         perror("ioctl");
@@ -539,19 +566,29 @@ int open_can_socket(const char *can_interface)
         return -1;
     }
 
-    return s;
+    return s; // Retourne le descripteur du socket en cas de succès
 }
 
+// *************************************************************************************************
+//  Auteur                     : Émie-Jeanne Dupuis
+//  Description                : Gère les données reçues via UART et les transmet sur le CAN.
+//  Paramètres d'entrées       : uart_fd - descripteur UART, can_socket - descripteur CAN
+//  Paramètres de sortie       : Aucun
+//  Notes                      : Identifie les commandes spécifiques et envoie des trames CAN correspondantes.
+// *************************************************************************************************
 void handle_uart_to_can(int uart_fd, int can_socket) 
 {
     char uart_buffer[UART_BUFFER_SIZE];
     
+    // Lire les données du port UART
     int bytes_read = read(uart_fd, uart_buffer, sizeof(uart_buffer) - 1);
+
     if (bytes_read > 0)
     {
-        uart_buffer[bytes_read] = '\0';
+        // Ajouter un caractère de fin de chaîne pour s'assurer que les données sont bien une chaîne de caractères
+        uart_buffer[bytes_read] = '\0';  
         printf("Reçu via UART : %s\n", uart_buffer);
-
+        
         if (strstr(uart_buffer, "$Alarme\n")) 
         {
             struct can_frame alarm_frame = { .can_id = com_alarm, .can_dlc = 1, .data = {1} };
@@ -571,13 +608,15 @@ void handle_uart_to_can(int uart_fd, int can_socket)
              printf("Mode arrêt envoyé sur le CAN\n");
         }
         else if (strstr(uart_buffer, "$Grammes\n")) 
-        {
+        { 
+              // Préparer une trame CAN pour demander une conversion en grammes
               struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {1} };
               write(can_socket, &conversion_frame, sizeof(conversion_frame));
               printf("Demande de conversion en grammes envoyé sur le CAN\n");
         } 
         else if (strstr(uart_buffer, "$Onces\n")) 
         {
+              // Préparer une trame CAN pour demander une conversion en onces
               struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {1} };
               write(can_socket, &conversion_frame, sizeof(conversion_frame));
               printf("Demande de conversion en onces envoyé sur le CAN\n");
@@ -585,11 +624,19 @@ void handle_uart_to_can(int uart_fd, int can_socket)
     }
   }
 
+// *************************************************************************************************
+//  Auteur                     : Émie-Jeanne Dupuis
+//  Description                : Gère les données reçues via CAN et les transmet sur l'UART.
+//  Paramètres d'entrées       : can_socket - descripteur CAN, uart_fd - descripteur UART
+//  Paramètres de sortie       : Aucun
+//  Notes                      : Décode les messages CAN pour identifier et transmettre les informations via UART.
+// *************************************************************************************************
 void handle_can_to_uart(int can_socket, int uart_fd) 
 {
-    const char *mode;
-    struct can_frame frame;
+    const char *mode;       // Variable pour stocker le mode reçu
+    struct can_frame frame; // Structure pour contenir un message CAN
 
+    // Lire un message CAN
     if (read(can_socket, &frame, sizeof(frame)) > 0) 
     {
         char uart_msg[256];
@@ -642,7 +689,7 @@ void handle_can_to_uart(int can_socket, int uart_fd)
           }
             case ct_couleur:
                 snprintf(uart_msg, sizeof(uart_msg), "$Couleur,%c\n", frame.data[0]);
-                printf("Caractère: %c\n", frame.data[0]);         // Affiche la conversion en caractère
+                printf("Caractère: %c\n", frame.data[0]);        
                 write(uart_fd, uart_msg, strlen(uart_msg));
                 break;
             case bal_poids:
@@ -664,61 +711,70 @@ void handle_can_to_uart(int can_socket, int uart_fd)
 int main()
 {
     signal(SIGINT, sigint_handler);
-
+    
+    // Ouvre le port UART en mode lecture/écriture
     int uart_fd = open(UART_PORT, O_RDWR | O_NOCTTY | O_SYNC);
     if (uart_fd < 0) 
     {
         perror("open UART");
         return -1;
     }
-
+    
+    // Configure les paramètres du port UART
     if (configure_uart(uart_fd) < 0) 
     {
         close(uart_fd);
         return -1;
     }
-
+    
+    // Ouvre une socket CAN
     int can_socket = open_can_socket(CAN_INTERFACE);
     if (can_socket < 0) 
     {
+        // Ferme le descripteur UART si l'ouverture de la socket CAN échoue
         close(uart_fd);
         return -1;
     }
-
+    
+    // Boucle principale pour lire et traiter les données jusqu'à ce que le signal d'arrêt soit reçu
     while (keep_running) 
     {
-        // handle_uart_to_can(uart_fd, can_socket);
-        // handle_can_to_uart(can_socket, uart_fd);
-        // usleep(10000);
 
-    fd_set read_fds;
-    FD_ZERO(&read_fds);
-    FD_SET(uart_fd, &read_fds);
-    FD_SET(can_socket, &read_fds);
-    
-    int max_fd = (uart_fd > can_socket) ? uart_fd : can_socket;
-    
-    struct timeval timeout;
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 0;
-    
-    int ret = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
-    
-    if (ret > 0) 
-    {
-        if (FD_ISSET(uart_fd, &read_fds)) 
+        fd_set read_fds; // Prépare un ensemble de descripteurs pour attendre des données
+        FD_ZERO(&read_fds); // Initialise l'ensemble à vide
+        FD_SET(uart_fd, &read_fds);  // Ajoute le descripteur UART
+        FD_SET(can_socket, &read_fds);  // Ajoute le descripteur CAN
+        
+        // Détermine le descripteur avec la plus grande valeur
+        int max_fd = (uart_fd > can_socket) ? uart_fd : can_socket;
+        
+        // Configure un délai d'attente (timeout) de 1 seconde
+        struct timeval timeout;
+        timeout.tv_sec = 1;
+        timeout.tv_usec = 0;
+        
+        // Attend des données sur l'un des descripteurs (UART ou CAN)
+        int ret = select(max_fd + 1, &read_fds, NULL, NULL, &timeout);
+        
+        // Si des données sont disponibles
+        if (ret > 0) 
         {
-            handle_uart_to_can(uart_fd, can_socket);
-        }
-        if (FD_ISSET(can_socket, &read_fds)) 
-        {
-            handle_can_to_uart(can_socket, uart_fd);
+            // Si des données sont disponibles sur UART, les traite et les envoie vers CAN
+            if (FD_ISSET(uart_fd, &read_fds)) 
+            {
+              handle_uart_to_can(uart_fd, can_socket);
+            }
+
+            // Si des données sont disponibles sur CAN, les traite et les envoie vers UART 
+            if (FD_ISSET(can_socket, &read_fds)) 
+            {
+              handle_can_to_uart(can_socket, uart_fd);
+            }
         }
     }
-    }
 
-    close(uart_fd);
-    close(can_socket);
+    close(uart_fd);    // Ferme le port UART
+    close(can_socket); // Ferme la socket CAN
 
     return 0;
 }
