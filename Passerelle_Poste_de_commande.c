@@ -603,7 +603,7 @@ void handle_uart_to_can(int uart_fd, int can_socket)
     {
         // Ajouter un caractère de fin de chaîne pour s'assurer que les données sont bien une chaîne de caractères
         uart_buffer[bytes_read] = '\0';  
-        printf("Reçu via UART : %s\n", uart_buffer);
+        // printf("Reçu via UART : %s\n", uart_buffer);
         
         if (strstr(uart_buffer, "$Alarme\n")) 
         {
@@ -619,7 +619,7 @@ void handle_uart_to_can(int uart_fd, int can_socket)
              frame.can_dlc = strlen("Start");
              strncpy((char *)frame.data, "Start", frame.can_dlc);
              write(can_socket, &frame, sizeof(frame));
-              printf("Mode opération envoyé sur le CAN\n");
+             printf("Mode opération envoyé sur le CAN\n");
         } 
         else if (strstr(uart_buffer, "$Arret\n")) 
         {
@@ -723,7 +723,8 @@ void handle_can_to_uart(int can_socket, int uart_fd)
                 write(uart_fd, uart_msg, strlen(uart_msg));
                 break;
             case gt_position:
-                snprintf(uart_msg, sizeof(uart_msg), "$Position,%d\n", frame.data[0]);
+                printf("Valeur brute reçue : 0x%X\n", frame.data[0]); 
+                snprintf(uart_msg, sizeof(uart_msg), "$Position,%c\n", frame.data[0] + '0');
                 write(uart_fd, uart_msg, strlen(uart_msg));
                 break; 
             default:
@@ -804,6 +805,10 @@ int main()
 
     return 0;
 }
+
+
+
+
 
 
 
