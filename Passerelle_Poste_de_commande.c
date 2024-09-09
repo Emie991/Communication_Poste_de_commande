@@ -594,6 +594,7 @@ int open_can_socket(const char *can_interface)
 void handle_uart_to_can(int uart_fd, int can_socket) 
 {
     char uart_buffer[UART_BUFFER_SIZE];
+    struct can_frame frame = {0}; // Initialiser la trame CAN
     
     // Lire les données du port UART
     int bytes_read = read(uart_fd, uart_buffer, sizeof(uart_buffer) - 1);
@@ -606,35 +607,45 @@ void handle_uart_to_can(int uart_fd, int can_socket)
         
         if (strstr(uart_buffer, "$Alarme\n")) 
         {
-            struct can_frame alarm_frame = { .can_id = com_alarm, .can_dlc = 1, .data = {1} };
-            write(can_socket, &alarm_frame, sizeof(alarm_frame));
-            printf("Message d'alarme envoyé sur le CAN\n");
+             frame.can_id = com_alarm;
+             frame.can_dlc = strlen("$Alarme\n");
+             strncpy((char *)frame.data, "$Alarme\n", frame.can_dlc);
+             write(can_socket, &frame, sizeof(frame));
+             printf("Message d'alarme envoyé sur le CAN\n");
         } 
         else if (strstr(uart_buffer, "$Start\n")) 
         {
-              struct can_frame mode_frame = { .can_id = com_mode, .can_dlc = 1, .data = {1} };
-              write(can_socket, &mode_frame, sizeof(mode_frame));
+             frame.can_id = com_mode;
+             frame.can_dlc = strlen("$Start\n");
+             strncpy((char *)frame.data, "$Start\n", frame.can_dlc);
+             write(can_socket, &frame, sizeof(frame));
               printf("Mode opération envoyé sur le CAN\n");
         } 
         else if (strstr(uart_buffer, "$Arret\n")) 
         {
-             struct can_frame mode_frame = { .can_id = com_mode, .can_dlc = 1, .data = {0} };
-             write(can_socket, &mode_frame, sizeof(mode_frame));
+            
+             frame.can_id = com_mode;
+             frame.can_dlc = strlen("$Arret\n");
+             strncpy((char *)frame.data, "$Arret\n", frame.can_dlc);
+             write(can_socket, &frame, sizeof(frame));
              printf("Mode arrêt envoyé sur le CAN\n");
         }
         else if (strstr(uart_buffer, "$Grammes\n")) 
         { 
-              // Préparer une trame CAN pour demander une conversion en grammes
-              struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {0} };
-              write(can_socket, &conversion_frame, sizeof(conversion_frame));
-              printf("Demande de conversion en grammes envoyé sur le CAN\n");
+             frame.can_id = com_conversion;
+             frame.can_dlc = strlen("$Grammes\n");
+             strncpy((char *)frame.data, "$Grammes\n", frame.can_dlc);
+             write(can_socket, &frame, sizeof(frame));
+             printf("Demande de conversion en grammes envoyé sur le CAN\n");
         } 
         else if (strstr(uart_buffer, "$Onces\n")) 
         {
-              // Préparer une trame CAN pour demander une conversion en onces
-              struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {1} };
-              write(can_socket, &conversion_frame, sizeof(conversion_frame));
-              printf("Demande de conversion en onces envoyé sur le CAN\n");
+             // Préparer une trame CAN pour demander une conversion en onces
+             frame.can_id = com_conversion;
+             frame.can_dlc = strlen("$Onces\n");
+             strncpy((char *)frame.data, "$Onces\n", frame.can_dlc);
+             write(can_socket, &frame, sizeof(frame));
+             printf("Demande de conversion en onces envoyé sur le CAN\n");
         } 
     }
   }
