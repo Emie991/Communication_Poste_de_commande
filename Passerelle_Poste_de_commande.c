@@ -437,10 +437,13 @@ typedef enum
     Commandant = 0x120,
         com_mode = Commandant + 1,
         com_alarm = Commandant + 2,
+        com_conversion = Commandant + 3,
+
     
     Station_Pese = 0x140,
         bal_mode = Station_Pese + 1,
         bal_poids = Station_Pese + 2,
+        bal_conversion = Station_Pese + 3,
     
     Centre_tri = 0x150,
         ct_couleur = Centre_tri + 1,
@@ -578,6 +581,18 @@ void handle_uart_to_can(int uart_fd, int can_socket)
              printf("Mode arrêt envoyé sur le CAN\n");
             }
         }
+        else if (strstr(uart_buffer, "$Grammes\n")) 
+        {
+              struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {1} };
+              write(can_socket, &conversion_frame, sizeof(conversion_frame));
+              printf("Demande de conversion en grammes envoyé sur le CAN\n");
+        } 
+        else if (strstr(uart_buffer, "$Onces\n")) 
+        {
+              struct can_frame conversion_frame = { .can_id = com_conversion, .can_dlc = 1, .data = {1} };
+              write(can_socket, &conversion_frame, sizeof(conversion_frame));
+              printf("Demande de conversion en onces envoyé sur le CAN\n");
+        } 
     }
   }
 
