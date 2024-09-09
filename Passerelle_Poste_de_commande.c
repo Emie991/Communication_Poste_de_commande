@@ -404,7 +404,22 @@
 //     return 0;
 // }
 
-
+/**
+ * @file    Passerelle_Poste_de_commande.c
+ * 
+ * @brief   Application de communication entre UART et CAN. 
+ *          Le programme lit les données UART et les transmet au bus CAN, et inversement.
+ *          Permet la gestion des messages de commandes et des réponses via des trames CAN et UART.
+ * 
+ *          - UART utilisé : /dev/ttyS1 (Beaglebone Blue)
+ *          - Interface CAN : can0
+ *          - Gestion des signaux pour une terminaison propre
+ *          - Communication en mode non canonique pour l'UART
+ * 
+ * @author  Émie-Jeanne Dupuis
+ * @date    2024-11-21
+ * 
+ */
 
 #define _GNU_SOURCE
 #define _DEFAULT_SOURCE
