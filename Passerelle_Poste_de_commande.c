@@ -624,7 +624,7 @@ void handle_can_to_uart(int can_socket, int uart_fd)
                 printf("Mode Attente");
                 printf("\n");
             } 
-            else if (strcmp((char *)frame.data, "Operation") == 0) 
+            else if (strcmp((char *)frame.data, "Ope") == 0) 
             {
                 mode = "Operation";
                 printf("Mode Operation");
