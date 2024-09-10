@@ -595,11 +595,11 @@ void handle_can_to_uart(int can_socket, int uart_fd)
                  write(uart_fd, uart_msg, strlen(uart_msg));
             break;
             case ct_couleur:
-                snprintf(uart_msg, sizeof(uart_msg), "$Couleur,%d\n", frame.data[0]);
+                snprintf(uart_msg, sizeof(uart_msg), "$Couleur,%c\n", frame.data[0]);
                 write(uart_fd, uart_msg, strlen(uart_msg));
                 break;
             case bal_poids:
-                snprintf(uart_msg, sizeof(uart_msg), "$Poids,%d\n", (frame.data[0] << 8) | frame.data[1]);
+                snprintf(uart_msg, sizeof(uart_msg), "$Poids,%d\n", frame.data[0]);
                 write(uart_fd, uart_msg, strlen(uart_msg));
                 break;
             case gt_position:
