@@ -18,7 +18,7 @@
 #include <linux/can/raw.h>
 
 #define UART_PORT "/dev/ttyS1"      // UART1 sur Beaglebone Blue
-#define CAN_INTERFACE "vcan0"       // Interface CAN (changez en "can0" si vous utilisez une interface réelle)
+#define CAN_INTERFACE "can0"       // Interface CAN (changez en "can0" si vous utilisez une interface réelle)
 #define MAX_DATA_SIZE 256           // Taille maximale des données
 #define UART_BUFFER_SIZE 1024  
 
