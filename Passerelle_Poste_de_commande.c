@@ -606,8 +606,8 @@ void handle_can_to_uart(int can_socket, int uart_fd)
         switch (frame.can_id) 
         {     
             case ct_mode:
-                 snprintf(uart_msg, sizeof(uart_msg), "Mode:%s\n", frame.data[0] == 1 ? "Test" : frame.data[0] == 2 ? "Erreur" : "Attente");
-                 write(uart_fd, uart_msg, strlen(uart_msg));
+                snprintf(uart_msg, sizeof(uart_msg), "Mode:%s\n", frame.data[0] == 1 ? "Test" : frame.data[0] == 2 ? "Erreur" : "Attente");
+                write(uart_fd, uart_msg, strlen(uart_msg));
             break;
             case ct_couleur:
                 snprintf(uart_msg, sizeof(uart_msg), "$Couleur,%c\n", frame.data[0]);
@@ -659,7 +659,7 @@ int main()
         // handle_can_to_uart(can_socket, uart_fd);
         // usleep(10000);
 
-            fd_set read_fds;
+    fd_set read_fds;
     FD_ZERO(&read_fds);
     FD_SET(uart_fd, &read_fds);
     FD_SET(can_socket, &read_fds);
